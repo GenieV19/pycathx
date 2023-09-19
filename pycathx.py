@@ -1,14 +1,19 @@
 #!/usr/bin/env python
 
-# Read image from Cathx-camera JFIF header, set filename in main()
-# 7. March 2023 - Joakim Skjefstad
+# Python module to read image metadata from Cathx-camera JFIF header
+# JFIF header as given by CathX M12 Camera onboard an AUV
+#
+# 7. March 2023 - Initial
+# 19. September 2023 - Updated
+# Joakim Skjefstad
 
 import xmltodict
 import json
 import argparse
+import os
+import glob
 
-number_of_bytes_to_read = 1024 # We assume all data is in first 1024 bytes
-
+number_of_bytes_to_read = 2048 # We assume all data is in first 2048 bytes
 
 class CathxImage:
     __slots__ = "image_time", "image_date", "acq_index",\
@@ -63,22 +68,13 @@ class CathxImage:
         self.serial_number = obj['image']['versions']['serial_number']
 
     def __str__(self):
-        return f'CathxImage: camera_session_name={self.camera_session_name} image_time={self.image_time} lat={self.lat} lon={self.long} altitude={self.altitude} depth={self.depth}'
+        return f'CathxImage: serial_number={self.serial_number} camera_session_name={self.camera_session_name} image_time={self.image_time} lat={self.lat} lon={self.long} altitude={self.altitude} depth={self.depth} exposure={self.exposure} aperture={self.aperture}'
 
     def get_json_dict(self):
         return self.json_dict
+    
 
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-filename", type=str, nargs='?')
-    args = parser.parse_args()
-
-    filename = args.filename
-
-    if args.filename is None:
-        filename="sample.jpg"
-        print("Missing filename, using sample.jpg")
-
+def target_file(filename, verbose=False):
     try:
         with open(filename, "rb") as fp:
             header_bytes = fp.read(number_of_bytes_to_read)
@@ -105,19 +101,60 @@ def main():
                 exit("No image end")
 
             xml_string = header_bytes[xml_start:image_end+8].decode("utf-8")
-            print(xml_string)
-            
+            #print(xml_string)
+
             json_img_dict = xmltodict.parse(xml_string)
 
             my_img = CathxImage(json_img_dict)
-            print(my_img)
+
+            if verbose:
+                print(filename, my_img)
 
             json_formatted_str = json.dumps(my_img.get_json_dict(), indent=4)
-            print(json_formatted_str)
+
+            if verbose:
+                print(json_formatted_str)
+            
+            return my_img # Return instance
+
     except FileNotFoundError as err:
         print("File not found")
         print(err)
         exit(-1)
+
+
+def target_folder(folder, verbose=False):
+    for f in glob.glob(f"{folder}\**\*.jpg", recursive=True):
+        if os.path.isfile(f):
+            target_file(f, verbose)
+
+def main():
+    parser = argparse.ArgumentParser(prog='pycathx example',
+                    description='Example of .jpg-metadata extraction from CathX-images taken with an AUV.',
+                    epilog='For more information, inspect metadata with Irfanview or read source code.')
+
+    parser.add_argument("-filename", type=str, nargs='?')
+    parser.add_argument("-folder", type=str, nargs='?')
+    parser.add_argument("-verbose", action="store_true")
+
+    args = parser.parse_args()
+
+    verbose = False
+    if args.verbose:
+        print("Verbose activated")
+        verbose = True
+
+    if args.folder:
+        folder = args.folder
+        target_folder(folder, verbose)
+
+    if args.filename:
+        filename = args.filename
+    else:
+        filename = "sample.jpg"
+    
+    target_file(filename, verbose)
+    print("Finished. No output? Add -verbose")
 
 if __name__=='__main__':
     main()
