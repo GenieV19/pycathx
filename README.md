@@ -12,6 +12,15 @@ You may find your transect tag in "camera_session_name". Maybe.
 
 Be warned: Position timestamp does not match perfectly with image capture time. Image is captured after the position is recorded. It will also take time from a position message is received, the delta being up to 20-30 ms or more. By the time the position reaches the payload processor, it is already old - it has an age.
 
+# jfif2csv
+
+Extract some metadata and puts it into output.csv. Can be extended with other parameters.
+
+Use this to analyze altitude, exposure and such, for example.
+
+# JFIF Structure
+Can be viewed with IrfanView or your favourite hex-editor, we assume is in the beginning 2048 bytes.
+
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
 <image time="12:32:33.832334" date="2022.11.27" acq_index="35636">
